@@ -1,6 +1,6 @@
 use error_iter::ErrorIter as _;
-use image::GenericImageView;
 use image::io::Reader;
+use image::GenericImageView;
 use log::error;
 use pixels::{Error, Pixels, SurfaceTexture};
 use winit::dpi::LogicalSize;
@@ -9,13 +9,25 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
 
-const WIDTH: i32 = 320;
-const HEIGHT: i32 = 240;
-const BOX_SIZE: i32 = 2;
+const WIDTH: i32 = 111;
+const HEIGHT: i32 = 101;
+const BOX_SIZE: i32 = 4;
 
 /// Representation of the application state.
 struct World {
-    mouse: (f32, f32),
+    mouse: Point,
+}
+
+#[derive(Clone, Copy)]
+struct Point {
+    x: i32,
+    y: i32,
+}
+
+impl Point {
+    fn new(x: i32, y: i32) -> Self {
+        Self { x, y }
+    }
 }
 
 fn main() -> Result<(), Error> {
@@ -59,9 +71,9 @@ fn main() -> Result<(), Error> {
             }
 
             if let Some(mouse) = input.mouse() {
-                world.mouse = (
-                    (mouse.0 / BOX_SIZE as f32 / 2.0),
-                    HEIGHT as f32 - (mouse.1 / BOX_SIZE as f32 / 2.0),
+                world.mouse = Point::new(
+                    (mouse.0 / BOX_SIZE as f32 / 2.0) as i32,
+                    (HEIGHT as f32 - (mouse.1 / BOX_SIZE as f32 / 2.0)) as i32,
                 );
             }
 
@@ -82,7 +94,8 @@ fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
 impl World {
     /// Create a new `World` instance that can draw a moving box.
     fn new() -> Self {
-        Self { mouse: (0.0, 0.0) }
+        let mouse = Point::new(0, 0);
+        Self { mouse }
     }
 
     /// Update the `World` internal state; bounce the box around the screen.
@@ -95,10 +108,8 @@ impl World {
         clear_background(frame, &[0x00, 0x00, 0x55, 0xff]);
 
         draw_line(
-            WIDTH / 2,
-            HEIGHT / 2,
-            self.mouse.0 as i32,
-            self.mouse.1 as i32,
+            Point::new(WIDTH / 2, HEIGHT / 2),
+            Point::new(self.mouse.x, self.mouse.y),
             frame,
             &[255, 255, 255, 255],
         );
@@ -106,25 +117,22 @@ impl World {
         draw_circle(
             WIDTH / 2,
             HEIGHT / 2,
-            ((self.mouse.0 - (WIDTH/2) as f32).powi(2) + (self.mouse.1 - (HEIGHT/2) as f32).powi(2)).sqrt() as i32,
+            (((self.mouse.x - (WIDTH / 2)).pow(2)
+                + (self.mouse.y - (HEIGHT / 2)).pow(2)) as f32
+        ).sqrt() as i32,
             frame,
             &[255, 255, 255, 255],
         );
 
-        draw_rectangle(
-            10,
-            10,
-            100,
-            10,
-            self.mouse.0 as i32 + 90,
-            self.mouse.1 as i32,
-            self.mouse.0 as i32,
-            self.mouse.1 as i32,
-            frame,
-            &[255, 0, 0, 255],
-        );
+        let pts = vec![
+            Point::new(10, 10),
+            Point::new(100, 10),
+            Point::new(self.mouse.x + 90, self.mouse.y),
+            Point::new(self.mouse.x, self.mouse.y),
+        ];
+        draw_polygon(&pts, frame, &[255, 0, 0, 255]);
 
-        draw_sprite("block.png", self.mouse.0 as i32, self.mouse.1 as i32, frame);
+        draw_sprite("bird.png", self.mouse.x, self.mouse.y, frame);
     }
 }
 
@@ -132,7 +140,9 @@ fn get_pixel_index(x: i32, y: i32) -> usize {
     (((y * WIDTH) + x) * 4) as usize
 }
 
-fn pixel(x: i32, y: i32, frame: &mut [u8], c: &[u8; 4]) {
+fn pixel(pt: Point, frame: &mut [u8], c: &[u8; 4]) {
+    let x = pt.x;
+    let y = pt.y;
     if (x < 0) || (y < 0) || (x >= WIDTH) || (y >= HEIGHT) {
         return;
     }
@@ -147,14 +157,16 @@ fn pixel(x: i32, y: i32, frame: &mut [u8], c: &[u8; 4]) {
 fn clear_background(frame: &mut [u8], c: &[u8; 4]) {
     for x in 0..WIDTH {
         for y in 0..HEIGHT {
-            pixel(x, y, frame, c);
+            pixel(Point::new(x, y), frame, c);
         }
     }
 }
 
-fn draw_line(x0: i32, y0: i32, x1: i32, y1: i32, frame: &mut [u8], c: &[u8; 4]) {
-    let mut x0 = x0;
-    let mut y0 = y0;
+fn draw_line(pt1: Point, pt2: Point, frame: &mut [u8], c: &[u8; 4]) {
+    let mut x0 = pt1.x;
+    let mut y0 = pt1.y;
+    let x1 = pt2.x;
+    let y1 = pt2.y;
     let dx = (x1 - x0).abs();
     let sx = if x0 < x1 { 1 } else { -1 };
     let dy = -(y1 - y0).abs();
@@ -162,7 +174,7 @@ fn draw_line(x0: i32, y0: i32, x1: i32, y1: i32, frame: &mut [u8], c: &[u8; 4]) 
     let mut error = dx + dy;
 
     loop {
-        pixel(x0, y0, frame, c);
+        pixel(Point::new(x0, y0), frame, c);
         if x0 == x1 && y0 == y1 {
             break;
         }
@@ -190,14 +202,14 @@ fn draw_circle(x: i32, y: i32, r: i32, frame: &mut [u8], c: &[u8; 4]) {
     let mut y1 = 0.0;
 
     while x1 >= y1 {
-        pixel(x1 as i32 + x, y1 as i32 + y, frame, c);
-        pixel(-x1 as i32 + x, y1 as i32 + y, frame, c);
-        pixel(x1 as i32 + x, -y1 as i32 + y, frame, c);
-        pixel(-x1 as i32 + x, -y1 as i32 + y, frame, c);
-        pixel(y1 as i32 + x, x1 as i32 + y, frame, c);
-        pixel(-y1 as i32 + x, x1 as i32 + y, frame, c);
-        pixel(y1 as i32 + x, -x1 as i32 + y, frame, c);
-        pixel(-y1 as i32 + x, -x1 as i32 + y, frame, c);
+        pixel(Point::new(x1 as i32 + x, y1 as i32 + y), frame, c);
+        pixel(Point::new(-x1 as i32 + x, y1 as i32 + y), frame, c);
+        pixel(Point::new(x1 as i32 + x, -y1 as i32 + y), frame, c);
+        pixel(Point::new(-x1 as i32 + x, -y1 as i32 + y), frame, c);
+        pixel(Point::new(y1 as i32 + x, x1 as i32 + y), frame, c);
+        pixel(Point::new(-y1 as i32 + x, x1 as i32 + y), frame, c);
+        pixel(Point::new(y1 as i32 + x, -x1 as i32 + y), frame, c);
+        pixel(Point::new(-y1 as i32 + x, -x1 as i32 + y), frame, c);
         y1 += 1.0;
         t1 += y1;
         let t2 = t1 - x1;
@@ -209,28 +221,25 @@ fn draw_circle(x: i32, y: i32, r: i32, frame: &mut [u8], c: &[u8; 4]) {
     }
 }
 
-fn draw_rectangle(
-    x0: i32,
-    y0: i32,
-    x1: i32,
-    y1: i32,
-    x2: i32,
-    y2: i32,
-    x3: i32,
-    y3: i32,
-    frame: &mut [u8],
-    c: &[u8; 4],
-) {
-    draw_line(x0, y0, x1, y1, frame, c);
-    draw_line(x1, y1, x2, y2, frame, c);
-    draw_line(x2, y2, x3, y3, frame, c);
-    draw_line(x3, y3, x0, y0, frame, c);
+fn draw_polygon(pts: &Vec<Point>, frame: &mut [u8], c: &[u8; 4]) {
+    for p in pts.windows(2) {
+        let pt1 = p[0];
+        let pt2 = p[1];
+        draw_line(Point::new(pt1.x, pt1.y), Point::new(pt2.x, pt2.y), frame, c);
+    }
+    draw_line(pts[pts.len() - 1], pts[0], frame, c)
 }
 
 fn draw_sprite(filename: &str, x: i32, y: i32, frame: &mut [u8]) {
     let img = Reader::open(filename).unwrap().decode().unwrap();
     for p in img.pixels() {
-        if p.2.0[3] == 0x00 { continue; }
-        pixel(p.0 as i32 + x, -(p.1 as i32) + y + img.height() as i32, frame, &p.2.0);
+        if p.2 .0[3] == 0x00 {
+            continue;
+        }
+        pixel(
+            Point::new(p.0 as i32 + x, -(p.1 as i32) + y + img.height() as i32),
+            frame,
+            &p.2 .0,
+        );
     }
 }
