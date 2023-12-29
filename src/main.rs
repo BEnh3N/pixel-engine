@@ -84,7 +84,7 @@ fn main() -> Result<(), Error> {
     });
 }
 
-fn log_error<E: std::error::Error + 'static>(method_name: &str, err: E) {
+fn log_error<E: error::Error + 'static>(method_name: &str, err: E) {
     error!("{method_name}() failed: {err}");
     for source in err.sources().skip(1) {
         error!("  Caused by: {source}");
@@ -147,7 +147,7 @@ fn pixel(pt: Point, frame: &mut [u8], c: &[u8; 4]) {
         return;
     }
 
-    let y = HEIGHT as i32 - y - 1;
+    let y = HEIGHT - y - 1;
 
     let i = get_pixel_index(x, y);
     let pixel = &mut frame[i..i + 4];
