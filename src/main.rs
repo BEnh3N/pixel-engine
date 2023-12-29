@@ -9,6 +9,8 @@ use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
 use winit_input_helper::WinitInputHelper;
 
+use std::error;
+
 const WIDTH: i32 = 111;
 const HEIGHT: i32 = 101;
 const BOX_SIZE: i32 = 4;
@@ -117,9 +119,8 @@ impl World {
         draw_circle(
             WIDTH / 2,
             HEIGHT / 2,
-            (((self.mouse.x - (WIDTH / 2)).pow(2)
-                + (self.mouse.y - (HEIGHT / 2)).pow(2)) as f32
-        ).sqrt() as i32,
+            (((self.mouse.x - (WIDTH / 2)).pow(2) + (self.mouse.y - (HEIGHT / 2)).pow(2)) as f32)
+                .sqrt() as i32,
             frame,
             &[255, 255, 255, 255],
         );
