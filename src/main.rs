@@ -1,5 +1,5 @@
 use pixels::{Error, Pixels, SurfaceTexture};
-use winit::dpi::LogicalSize;
+use winit::dpi::PhysicalSize;
 use winit::event::{Event, VirtualKeyCode};
 use winit::event_loop::{ControlFlow, EventLoop};
 use winit::window::WindowBuilder;
@@ -19,7 +19,7 @@ fn main() -> Result<(), Error> {
     let event_loop = EventLoop::new();
     let mut input = WinitInputHelper::new();
     let window = {
-        let size = LogicalSize::new(WIDTH * BOX_SIZE, HEIGHT * BOX_SIZE);
+        let size = PhysicalSize::new(WIDTH * BOX_SIZE, HEIGHT * BOX_SIZE);
         WindowBuilder::new()
             .with_title("Pixel Engine")
             .with_inner_size(size)
@@ -56,9 +56,9 @@ fn main() -> Result<(), Error> {
 
             if let Some(mouse) = input.mouse() {
                 world.mouse = Point::new(
-                    (mouse.0 / BOX_SIZE as f32 / 2.0) as i32,
-                    (HEIGHT as f32 - (mouse.1 / BOX_SIZE as f32 / 2.0)) as i32,
-                );
+                    (mouse.0 / BOX_SIZE as f32) as i32,
+                    HEIGHT - ((mouse.1 / BOX_SIZE as f32) as i32)
+                )
             }
 
             // Update internal state and request a redraw

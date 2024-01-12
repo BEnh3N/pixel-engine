@@ -1,5 +1,5 @@
-pub const WIDTH: i32 = 111;
-pub const HEIGHT: i32 = 101;
+pub const WIDTH: i32 = 480;
+pub const HEIGHT: i32 = 270;
 pub const BOX_SIZE: i32 = 4;
 
 pub mod draw;
@@ -32,6 +32,9 @@ pub struct Point {
 impl Point {
     pub fn new(x: i32, y: i32) -> Self {
         Self { x, y }
+    }
+    pub fn from_tuple(x_y: (f32, f32)) -> Self {
+        Self { x: x_y.0 as i32, y: x_y.1 as i32 }
     }
 }
 
