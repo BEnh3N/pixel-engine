@@ -57,7 +57,7 @@ fn main() -> Result<(), Error> {
             if let Some(mouse) = input.mouse() {
                 world.mouse = Point::new(
                     (mouse.0 / BOX_SIZE as f32) as i32,
-                    HEIGHT - ((mouse.1 / BOX_SIZE as f32) as i32)
+                    HEIGHT - (mouse.1 / BOX_SIZE as f32) as i32
                 )
             }
 
